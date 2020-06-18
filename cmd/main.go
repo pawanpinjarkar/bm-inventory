@@ -46,6 +46,7 @@ var Options struct {
 	ClusterStateMonitorInterval time.Duration `envconfig:"CLUSTER_MONITOR_INTERVAL" default:"10s"`
 	S3Config                    s3wrapper.Config
 	HostStateMonitorInterval    time.Duration `envconfig:"HOST_MONITOR_INTERVAL" default:"30s"`
+	Target                      string        `envconfig:"TARGET" default:"oc-ingress"`
 }
 
 func main() {
@@ -83,11 +84,6 @@ func main() {
 		log.Fatal("Failed to add K8S scheme", err)
 	}
 
-	kclient, err := client.New(config.GetConfigOrDie(), client.Options{Scheme: scheme})
-	if err != nil {
-		log.Fatal("failed to create client:", err)
-	}
-
 	if err = db.AutoMigrate(&models.Host{}, &models.Cluster{}, &events.Event{}).Error; err != nil {
 		log.Fatal("failed to auto migrate, ", err)
 	}
@@ -113,8 +109,17 @@ func main() {
 		log.Fatal("Failed to setup S3 client", err)
 	}
 
-	jobApi := job.New(log.WithField("pkg", "k8s-job-wrapper"), kclient, Options.JobConfig)
-	bm := bminventory.NewBareMetalInventory(db, log.WithField("pkg", "Inventory"), hostApi, clusterApi, Options.BMConfig, jobApi, eventsHandler, s3Client)
+	log.Println("Target: " + Options.Target)
+
+	var jobAPI job.API
+	if Options.Target != "disconnected" {
+		kclient, clientErr := client.New(config.GetConfigOrDie(), client.Options{Scheme: scheme})
+		if clientErr != nil {
+			log.Fatal("failed to create client:", clientErr)
+		}
+		jobAPI = job.New(log.WithField("pkg", "k8s-job-wrapper"), kclient, Options.JobConfig)
+	}
+	bm := bminventory.NewBareMetalInventory(db, log.WithField("pkg", "Inventory"), hostApi, clusterApi, Options.BMConfig, jobAPI, eventsHandler, s3Client)
 
 	events := events.NewApi(eventsHandler, logrus.WithField("pkg", "eventsApi"))
 

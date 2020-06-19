@@ -1,0 +1,26 @@
+FROM quay.io/ocpmetal/livecd-iso:fedora-coreos-livecd AS livecd-build
+FROM quay.io/coreos/coreos-installer:release AS coreos-installer
+FROM python:3
+
+ARG GIT_REVISION
+ARG WORK_DIR=/hack
+
+LABEL "git_revision"=${GIT_REVISION}
+
+ADD build/bm-inventory /bm-inventory
+
+RUN mkdir $WORK_DIR
+
+COPY --from=livecd-build /root/image/livecd.iso $WORK_DIR
+COPY --from=coreos-installer /usr/sbin/coreos-installer $WORK_DIR
+COPY hack/requirements.txt /tmp/requirements.txt
+COPY hack/install_process.py $WORK_DIR/install_process.py
+
+RUN pip install -r /tmp/requirements.txt
+RUN rm /tmp/*requirements.txt
+RUN chmod -R +x $WORK_DIR
+
+ENV COREOS_IMAGE=$WORK_DIR/livecd.iso
+ENV WORK_DIR=$WORK_DIR
+
+CMD ["/bm-inventory"]

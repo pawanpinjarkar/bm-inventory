@@ -119,7 +119,7 @@ clear-deployment:
 build-disconnected:
 	podman build -f Dockerfile.bm-inventory-disconnected -t quay.io/ppinjark/bm-inventory:disconnected .
 
-deploy-disconnected:
+deploy-onprem:
 	podman pod create --name assisted-installer -p 3306,8000,8090,8080
 	podman volume create s3-volume
 	podman run -dt --pod assisted-installer --env-file disconnected-environment -v s3-volume:/mnt/data:rw --name s3 scality/s3server:latest
@@ -128,11 +128,11 @@ deploy-disconnected:
 	sleep 120
 	podman run -dt --pod assisted-installer --env-file disconnected-environment --name installer ${SERVICE}
 
-clean-disconnected:
+clean-onprem:
 	podman pod rm -f assisted-installer
 	podman volume rm s3-volume
 
-test-disconnected:
+test-onprem:
 	INVENTORY=127.0.0.1:8090 \
 	DB_HOST=127.0.0.1 \
 	DB_PORT=3306 \

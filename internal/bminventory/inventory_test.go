@@ -82,7 +82,7 @@ var _ = Describe("GenerateClusterISO", func() {
 		db = prepareDB()
 		mockEvents = events.NewMockHandler(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), nil, nil, cfg, mockJob, mockEvents, nil)
 	})
 
@@ -97,9 +97,8 @@ var _ = Describe("GenerateClusterISO", func() {
 
 	It("success", func() {
 		clusterId := registerCluster().ID
-		mockJob.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Monitor(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockEvents.EXPECT().AddEvent(gomock.Any(), clusterId.String(), "Generated image (proxy URL is \"\", SSH public key is not set)", gomock.Any())
 		generateReply := bm.GenerateClusterISO(ctx, installer.GenerateClusterISOParams{
 			ClusterID:         *clusterId,
 			ImageCreateParams: &models.ImageCreateParams{},
@@ -111,9 +110,9 @@ var _ = Describe("GenerateClusterISO", func() {
 
 	It("success with proxy", func() {
 		clusterId := registerCluster().ID
-		mockJob.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Monitor(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockEvents.EXPECT().AddEvent(gomock.Any(), clusterId.String(), "Generated image (proxy URL is \"http://1.1.1.1:1234\", SSH public key "+
+			"is not set)", gomock.Any())
 		generateReply := bm.GenerateClusterISO(ctx, installer.GenerateClusterISOParams{
 			ClusterID:         *clusterId,
 			ImageCreateParams: &models.ImageCreateParams{ProxyURL: "http://1.1.1.1:1234"},
@@ -130,8 +129,7 @@ var _ = Describe("GenerateClusterISO", func() {
 
 	It("failed_to_create_job", func() {
 		clusterId := registerCluster().ID
-		mockJob.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(fmt.Errorf("error")).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(installer.NewGenerateClusterISOInternalServerError()).Times(1)
 		generateReply := bm.GenerateClusterISO(ctx, installer.GenerateClusterISOParams{
 			ClusterID:         *clusterId,
 			ImageCreateParams: &models.ImageCreateParams{},
@@ -141,9 +139,8 @@ var _ = Describe("GenerateClusterISO", func() {
 
 	It("job_failed", func() {
 		clusterId := registerCluster().ID
-		mockJob.EXPECT().Delete(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-		mockJob.EXPECT().Monitor(gomock.Any(), gomock.Any(), gomock.Any()).Return(fmt.Errorf("error")).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(installer.NewGenerateClusterISOInternalServerError()).Times(1)
+
 		generateReply := bm.GenerateClusterISO(ctx, installer.GenerateClusterISOParams{
 			ClusterID:         *clusterId,
 			ImageCreateParams: &models.ImageCreateParams{},
@@ -179,7 +176,7 @@ var _ = Describe("GetNextSteps", func() {
 		mockHostApi = host.NewMockAPI(ctrl)
 		mockEvents = events.NewMockHandler(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), mockHostApi, nil, cfg, mockJob, mockEvents, nil)
 	})
 
@@ -269,7 +266,7 @@ var _ = Describe("PostStepReply", func() {
 		mockHostApi = host.NewMockAPI(ctrl)
 		mockEvents = events.NewMockHandler(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), mockHostApi, nil, cfg, mockJob, mockEvents, nil)
 	})
 
@@ -336,8 +333,139 @@ var _ = Describe("UpdateHostInstallProgress", func() {
 		mockHostApi = host.NewMockAPI(ctrl)
 		mockEvents = events.NewMockHandler(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), mockHostApi, nil, cfg, mockJob, mockEvents, nil)
+	})
+
+	It("success", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/16", "10.0.10.1", "10.0.20.0", "10.0.9.250")), host.HostStatusInsufficient)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/16")
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(len(actualReply.Payload)).To(Equal(3))
+		Expect(actualReply.Payload[0]).To(Equal(strfmt.IPv4("10.0.9.250")))
+		Expect(actualReply.Payload[1]).To(Equal(strfmt.IPv4("10.0.10.1")))
+		Expect(actualReply.Payload[2]).To(Equal(strfmt.IPv4("10.0.20.0")))
+	})
+
+	It("success with limit", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/16", "10.0.10.1", "10.0.20.0", "10.0.9.250")), host.HostStatusInsufficient)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/16")
+		params.Limit = swag.Int64(2)
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(len(actualReply.Payload)).To(Equal(2))
+		Expect(actualReply.Payload[0]).To(Equal(strfmt.IPv4("10.0.9.250")))
+		Expect(actualReply.Payload[1]).To(Equal(strfmt.IPv4("10.0.10.1")))
+	})
+
+	It("success with limit and prefix", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/16", "10.0.10.1", "10.0.20.0", "10.0.9.250", "10.0.1.0")), host.HostStatusInsufficient)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/16")
+		params.Limit = swag.Int64(2)
+		params.Prefix = swag.String("10.0.1")
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(len(actualReply.Payload)).To(Equal(2))
+		Expect(actualReply.Payload[0]).To(Equal(strfmt.IPv4("10.0.1.0")))
+		Expect(actualReply.Payload[1]).To(Equal(strfmt.IPv4("10.0.10.1")))
+	})
+
+	It("one disconnected", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.1")), host.HostStatusInsufficient)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.2")), host.HostStatusKnown)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24")), host.HostStatusDisconnected)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/24")
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(len(actualReply.Payload)).To(Equal(1))
+		Expect(actualReply.Payload).To(ContainElement(strfmt.IPv4("10.0.0.0")))
+	})
+
+	It("empty result", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("192.168.0.0/24"),
+			makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.1")), host.HostStatusInsufficient)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.2"),
+			makeFreeAddresses("192.168.0.0/24")), host.HostStatusKnown)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.1", "10.0.0.2")), host.HostStatusInsufficient)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/24")
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(actualReply.Payload).To(BeEmpty())
+	})
+
+	It("malformed", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("192.168.0.0/24"),
+			makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.1")), host.HostStatusInsufficient)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.2"),
+			makeFreeAddresses("192.168.0.0/24")), host.HostStatusKnown)
+		_ = makeHost(clusterId, "blah ", host.HostStatusInsufficient)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/24")
+		reply := bm.GetFreeAddresses(ctx, params)
+		Expect(reply).Should(BeAssignableToTypeOf(installer.NewGetFreeAddressesOK()))
+		actualReply := reply.(*installer.GetFreeAddressesOK)
+		Expect(len(actualReply.Payload)).To(Equal(1))
+		Expect(actualReply.Payload).To(ContainElement(strfmt.IPv4("10.0.0.0")))
+	})
+
+	It("no matching  hosts", func() {
+		clusterId := strToUUID(uuid.New().String())
+
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("192.168.0.0/24"),
+			makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.1")), host.HostStatusDisconnected)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.0/24", "10.0.0.0", "10.0.0.2"),
+			makeFreeAddresses("192.168.0.0/24")), host.HostStatusDiscovering)
+		_ = makeHost(clusterId, makeFreeNetworksAddressesStr(makeFreeAddresses("10.0.0.1/24", "10.0.0.0", "10.0.0.2")), host.HostStatusInstalling)
+		params := makeGetFreeAddressesParams(*clusterId, "10.0.0.0/24")
+		verifyApiError(bm.GetFreeAddresses(ctx, params), http.StatusNotFound)
+	})
+
+	AfterEach(func() {
+		ctrl.Finish()
+		db.Close()
+	})
+})
+
+var _ = Describe("UpdateHostInstallProgress", func() {
+	var (
+		bm                   *bareMetalInventory
+		cfg                  Config
+		db                   *gorm.DB
+		ctx                  = context.Background()
+		ctrl                 *gomock.Controller
+		mockJob              *job.MockAPI
+		mockHostApi          *host.MockAPI
+		mockEvents           *events.MockHandler
+		defaultProgressStage models.HostStage
+	)
+
+	BeforeEach(func() {
+		Expect(envconfig.Process("test", &cfg)).ShouldNot(HaveOccurred())
+		ctrl = gomock.NewController(GinkgoT())
+		db = prepareDB()
+		mockHostApi = host.NewMockAPI(ctrl)
+		mockEvents = events.NewMockHandler(ctrl)
+		mockJob = job.NewMockAPI(ctrl)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		bm = NewBareMetalInventory(db, getTestLog(), mockHostApi, nil, cfg, mockJob, mockEvents, nil)
+		defaultProgressStage = "some progress"
 	})
 
 	Context("host exists", func() {
@@ -438,12 +566,6 @@ var _ = Describe("cluster", func() {
 	set4GetMasterNodesIds := func(mockClusterApi *cluster.MockAPI) {
 		mockClusterApi.EXPECT().GetMasterNodesIds(gomock.Any(), gomock.Any(), gomock.Any()).Return([]*strfmt.UUID{&masterHostId1, &masterHostId2, &masterHostId3, &masterHostId4}, nil)
 	}
-	setDefaultJobCreate := func(mockJobApi *job.MockAPI) {
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	}
-	setDefaultJobMonitor := func(mockJobApi *job.MockAPI) {
-		mockJob.EXPECT().Monitor(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
-	}
 	setDefaultHostInstall := func(mockClusterApi *cluster.MockAPI) {
 		mockHostApi.EXPECT().Install(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil).AnyTimes()
 	}
@@ -489,7 +611,7 @@ var _ = Describe("cluster", func() {
 		mockHostApi = host.NewMockAPI(ctrl)
 		mockEvents = events.NewMockHandler(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), mockHostApi, mockClusterApi, cfg, mockJob, mockEvents, nil)
 	})
 
@@ -708,13 +830,10 @@ var _ = Describe("cluster", func() {
 		})
 
 		It("success", func() {
-
+			mockJob.EXPECT().GenerateInstallConfig(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
+			mockPrepareForInstallationSuccess(mockClusterApi)
 			setDefaultInstall(mockClusterApi)
 			setDefaultGetMasterNodesIds(mockClusterApi)
-			setIgnitionGeneratorVersionSuccess(mockClusterApi)
-
-			setDefaultJobCreate(mockJob)
-			setDefaultJobMonitor(mockJob)
 			validateHostInventory(mockClusterApi)
 			setDefaultHostInstall(mockClusterApi)
 			setDefaultHostGetHostValidDisks(mockClusterApi)
@@ -836,7 +955,7 @@ var _ = Describe("KubeConfig download", func() {
 		mockJob = job.NewMockAPI(ctrl)
 		clusterApi = cluster.NewManager(getTestLog().WithField("pkg", "cluster-monitor"), db, nil)
 
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), nil, clusterApi, cfg, mockJob, nil, mockS3Client)
 		c = common.Cluster{Cluster: models.Cluster{
 			ID:     &clusterID,
@@ -928,7 +1047,7 @@ var _ = Describe("UploadClusterIngressCert test", func() {
 		mockS3Client = awsS3Client.NewMockS3Client(ctrl)
 		mockJob = job.NewMockAPI(ctrl)
 		clusterApi = cluster.NewManager(getTestLog().WithField("pkg", "cluster-monitor"), db, nil)
-		mockJob.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil).Times(1)
+		mockJob.EXPECT().GenerateISO(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).Times(1)
 		bm = NewBareMetalInventory(db, getTestLog(), nil, clusterApi, cfg, mockJob, nil, mockS3Client)
 		c = common.Cluster{Cluster: models.Cluster{
 			ID:     &clusterID,

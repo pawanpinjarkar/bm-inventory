@@ -62,9 +62,14 @@ type InstallerConfigBaremetal struct {
 		Name     string `yaml:"name"`
 		Replicas int    `yaml:"replicas"`
 	} `yaml:"controlPlane"`
-	Platform   platform `yaml:"platform"`
-	PullSecret string   `yaml:"pullSecret"`
-	SSHKey     string   `yaml:"sshKey"`
+	Platform            platform `yaml:"platform"`
+	PullSecret          string   `yaml:"pullSecret"`
+	SSHKey              string   `yaml:"sshKey"`
+	ImageContentSources []struct {
+		Mirrors []string `yaml:"mirrors"`
+		Source  string   `yaml:"source"`
+	} `yaml:"imageContentSources"`
+	AdditionalTrustBundle string `yaml:"additionalTrustBundle"`
 }
 
 func countHostsByRole(cluster *common.Cluster, role string) int {
@@ -126,6 +131,24 @@ func getBasicInstallConfig(cluster *common.Cluster) *InstallerConfigBaremetal {
 		},
 		PullSecret: cluster.PullSecret,
 		SSHKey:     cluster.SSHPublicKey,
+		ImageContentSources: []struct {
+			Mirrors []string `yaml:"mirrors"`
+			Source  string   `yaml:"source"`
+		}{
+			{
+				Mirrors: []string{
+					"local.registry:5000/ocp4",
+				},
+				Source: "quay.io/openshift-release-dev/ocp-release",
+			},
+			{
+				Mirrors: []string{
+					"local.registry:5000/ocp4",
+				},
+				Source: "quay.io/openshift-release-dev/ocp-v4.0-art-dev",
+			},
+		},
+		AdditionalTrustBundle: `test`,
 	}
 }
 

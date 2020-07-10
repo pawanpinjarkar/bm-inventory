@@ -9,5 +9,7 @@ DB_HOST=127.0.0.1
 TARGET=disconnected
 INVENTORY_URL=10.0.1.10
 INVENTORY_PORT=8080
-INSTALLER_IMAGE=local.registry:5000/ocpmetal/assisted-installer:latest
-AGENT_DOCKER_IMAGE=local.registry:5000/ocpmetal/agent:latest
+INSTALLER_IMAGE=local.registry:5001/ocpmetal/assisted-installer:latest
+AGENT_DOCKER_IMAGE=local.registry:5001/ocpmetal/agent:latest
+
+

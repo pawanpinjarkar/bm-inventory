@@ -79,6 +79,7 @@ type Config struct {
 	BaseDNSDomains      map[string]string `envconfig:"BASE_DNS_DOMAINS" default:""`
 }
 
+//"contents": { "source": "[registries.insecure]\nregistries=[\"local.registry:5001\"]" }
 const ignitionConfigFormat = `{
 "ignition": { "version": "3.0.0" },
   "passwd": {
@@ -98,7 +99,13 @@ const ignitionConfigFormat = `{
       "path": "/etc/assisted-installer.ps",
       "mode": 420,
       "contents": { "source": "{{.PULL_SECRET}}" }
-    }]
+	},
+	{
+	  "path": "/etc/containers/registries.conf",
+	  "mode": 420,
+	  "overwrite": true,
+	  "contents": { "source": "data:text/plain;charset=utf-8,%5Bregistries.insecure%5D%0Aregistries%3D%5B%22local.registry%3A5001%22%5D" }
+	}]
   }
 }`
 

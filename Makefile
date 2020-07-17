@@ -173,6 +173,7 @@ test-onprem:
 	DB_HOST=127.0.0.1 \
 	DB_PORT=5432 \
 	go test -v ./subsystem/... -count=1 -ginkgo.focus=${FOCUS} -ginkgo.v
+	IMAGE_CONTENT_SOURCES="testSource1;testSource2" go test -v $(or ${TEST}, ${TEST}, $(shell go list ./... | grep -v subsystem)) -cover
 
 #########
 # Clean #

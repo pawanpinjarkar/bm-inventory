@@ -79,6 +79,7 @@ type Config struct {
 	BaseDNSDomains      map[string]string `envconfig:"BASE_DNS_DOMAINS" default:""`
 }
 
+//"contents": { "source": "[registries.insecure]\nregistries=[\"local.registry:5001\"]" }
 const ignitionConfigFormat = `{
 "ignition": { "version": "3.0.0" },
   "passwd": {

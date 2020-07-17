@@ -152,7 +152,7 @@ deploy-grafana: create-build-dir
 deploy-monitoring: deploy-olm deploy-prometheus deploy-grafana
 
 unit-test:
-	go test -v $(or ${TEST}, ${TEST}, $(shell go list ./... | grep -v subsystem)) -cover
+	IMAGE_CONTENT_SOURCES="testSource1;testSource2" go test -v $(or ${TEST}, ${TEST}, $(shell go list ./... | grep -v subsystem)) -cover
 
 #########
 # Clean #

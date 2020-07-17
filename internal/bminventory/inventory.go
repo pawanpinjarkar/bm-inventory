@@ -90,7 +90,6 @@ The primary service is agent.service.  To watch its status run e.g
 sudo journalctl -u agent.service
 **  **  **  **  **  **  **  **  **  **  **  **  **  **  **  **  **  ** **  **  **  **  **  **  **
 `
-
 const ignitionConfigFormat = `{
 "ignition": { "version": "2.2.0" },
   "passwd": {
@@ -117,7 +116,21 @@ const ignitionConfigFormat = `{
       "path": "/etc/motd",
       "mode": 644,
       "contents": { "source": "data:,{{.AGENT_MOTD}}" }
-    }]
+    },
+	{
+	  "filesystem": "root",
+	  "path": "/etc/containers/registries.conf",
+	  "mode": 420,
+	  "overwrite": true,
+	  "contents": { "source": "{{.RegistriesMapping}}" }
+	},
+	{
+		"filesystem": "root",
+		"path": "/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt",
+		"mode": 420,
+		"append": true,
+		"contents": { "source": "{{.AdditionalTrustBundle}}" }
+	}]
   }
 }`
 
@@ -201,15 +214,70 @@ func (b *bareMetalInventory) generateDummyISOImage() {
 }
 
 func (b *bareMetalInventory) formatIgnitionFile(cluster *common.Cluster, params installer.GenerateClusterISOParams) (string, error) {
+	trustca := `-----BEGIN CERTIFICATE-----
+MIIFzzCCA7egAwIBAgIUQH6Eb1BL3Xi4tLKfeXvAKQrqm8QwDQYJKoZIhvcNAQEL
+BQAwdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xpbmExEDAOBgNV
+BAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwLRW5naW5lZXJp
+bmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MB4XDTIwMDcwODE5MzEyMloXDTMw
+MDcwNjE5MzEyMlowdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xp
+bmExEDAOBgNVBAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwL
+RW5naW5lZXJpbmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MIICIjANBgkqhkiG
+9w0BAQEFAAOCAg8AMIICCgKCAgEAz0/rG+I4FIeGFwnoSNONyjKCF/SCknYlaM0C
+8V56BlHKBRt0pp7jLPvlOOuCk0Db5cwtlYaDpWy0w0iLxWapOClLOS+UDRTAIMTA
+DBsEgww38xLPGpbP4s6yw5SlEuetHPcpIrKckGTeIqapWid51yBf4oF1UsPmaXcc
+AfKj+6+wqwu40dER0G43WTl/CncjsFQJvKQAdu6m0h0Ldqy394moYIBSVsfkDSSq
+eP/z6LXGh7M7jF5s5s6BPeGPzuRrgc3IBNJWcUjKFrFXi7u5OmdfG+pg2M3qYwIo
+YHa7sAM8MkRE+Kw6mnzfv0j9V6k2vYu2/ZsVtSwaMklaOheGU6ERTvAZmY7BSwAW
+WMDa9g8XbGJ8dvdoFnFFTHs2YgPG99K2ZUVmxunQaWj/lH3uUGS10wsSmeu5RinA
+BXUY4I+mQpjUg8bqX2V2MitMxwgSYZSX2B3wqFdlTenHLoXiX9aGiSio6KFF1KVQ
+TYJ4gn7LG+PmXgvhtM5+M/TPNMXuGoIiYqTyOv4hLQKRrSIl1MS/1rSjXkGGpYkG
+AImwcIcG74lMtD65AgeD2o8hxMr6uDmI34P8yFuuwn1UJ0+f7Y1eXc/JN/ncgagv
+7lVOzk+E+WyZQrDzdRW201tKBEQVKm/Vxrv4NxbM3dh1SPpRjDWXBS83PbUM86HW
+B7LqSesCAwEAAaNTMFEwHQYDVR0OBBYEFGaknke5Vyb16D8S3b08GqsJooeUMB8G
+A1UdIwQYMBaAFGaknke5Vyb16D8S3b08GqsJooeUMA8GA1UdEwEB/wQFMAMBAf8w
+DQYJKoZIhvcNAQELBQADggIBAGMFNOkVqKMm5YzHQUCwVoByPgn5cnmBQIYe5W6k
+6rBP9FuerBTJF1Kas98IYlH9ctVlpTDFAUuU1zUnOoBGIHbgYIs6htW56ghDTI27
+UCDpAwhv889NvHpWK147z66JHLpTiDYb+34K9sGbuNQDy/YSWLBXIP4uYYChEnnM
+hyjnxO84bphzDzVC57Qj0YLrQaXUX+P1qfNXGS7oIMZH12aAyHcCP/qerTbYAVPy
+UmGziGaF4S/Sg1c28yKL5eGE1fwHDLYqiedGKZwMRgVt4b3m7GoVjVmkhCCnKn4O
+RuoAGETuRHpI/6S0e4UaUDMi8D0F+wNP/AAikTSB2339EVA57MXeuqAByKjbyiR2
+3d8mvgiIm2CMTxomNpc0Fg+90tLdsQpwXhMIF7q3JVq55ri8RjhdyYYtWq03omx2
+XNVLb8igICsHeVFgBaJ54GpAwgXsP+fcPCXzn2I4Gj0zmP10z942wmIWwgGbJAI+
+L8kD5lyFxCOuZYUn3tZgSa4S6GR/MWJPMZwht2oUQyDLs0OJ7HEQKRN/OOkJq3An
+ANtGSADHldAqbZq5KfaPcdKXERAxrpmoKhazBV+joDlF138Uke6jnUZ2ja83Zz/9
+nG52KdhuWNWCZgh6kgw/1ULYmoog6kiBLGF5nk4GBww8GaKVw7c3mU71BHgNufWW
+eOod
+-----END CERTIFICATE-----
+	`
+	registriesMapping := `
+unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
+[[registry]]
+	location="local.registry:5001"
+	insecure=true
+[[registry]]
+	prefix = ""
+	location = "quay.io/openshift-release-dev/ocp-release"
+	mirror-by-digest-only = true
+	[[registry.mirror]]
+	location = "local.registry:5000/ocp4"
+[[registry]]
+	prefix = ""
+	location = "quay.io/openshift-release-dev/ocp-v4.0-art-dev"
+	mirror-by-digest-only = true
+	[[registry.mirror]]
+	location = "local.registry:5000/ocp4"`
+
 	var ignitionParams = map[string]string{
-		"userSshKey":     b.getUserSshKey(params),
-		"AgentDockerImg": b.AgentDockerImg,
-		"InventoryURL":   b.InventoryURL,
-		"InventoryPort":  b.InventoryPort,
-		"clusterId":      cluster.ID.String(),
-		"ProxyURL":       params.ImageCreateParams.ProxyURL,
-		"PULL_SECRET":    dataurl.EncodeBytes([]byte(cluster.PullSecret)),
-		"AGENT_MOTD":     url.PathEscape(agentMessageOfTheDay),
+		"userSshKey":            b.getUserSshKey(params),
+		"AgentDockerImg":        b.AgentDockerImg,
+		"InventoryURL":          b.InventoryURL,
+		"InventoryPort":         b.InventoryPort,
+		"clusterId":             cluster.ID.String(),
+		"ProxyURL":              params.ImageCreateParams.ProxyURL,
+		"PULL_SECRET":           dataurl.EncodeBytes([]byte(cluster.PullSecret)),
+		"AGENT_MOTD":            url.PathEscape(agentMessageOfTheDay),
+		"RegistriesMapping":     dataurl.EncodeBytes([]byte(registriesMapping)),
+		"AdditionalTrustBundle": dataurl.EncodeBytes([]byte(trustca)),
 	}
 	tmpl, err := template.New("ignitionConfig").Parse(ignitionConfigFormat)
 	if err != nil {

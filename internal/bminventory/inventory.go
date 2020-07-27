@@ -104,10 +104,22 @@ const ignitionConfigFormat = `{
 	  "path": "/etc/containers/registries.conf",
 	  "mode": 420,
 	  "overwrite": true,
-	  "contents": { "source": "data:text/plain;charset=utf-8,%5Bregistries.insecure%5D%0Aregistries%3D%5B%22local.registry%3A5001%22%5D" }
-	}]
+	  "contents": { "source": "{{.RegistriesMapping}}" }
+	},
+	{
+		"path": "/etc/pki/ca-trust/extracted/openssl/ca-bundle.trust.crt",
+		"mode": 420,
+		"overwrite": true,
+		"contents": { "source": "{{.AdditionalTrustBundle}}" }
+	  }]
   }
 }`
+
+//"contents": { "source": "data:text/plain;charset=utf-8,unqualified-search-registries%20%3D%20%5B%22registry.access.redhat.com%22%2C%20%22docker.io%22%5D%0A%5B%5Bregistry%5D%5D%0Alocation%3D%22local.registry%3A5001%22%0Ainsecure%3Dtrue%0A%5B%5Bregistry%5D%5D%0A%20%20prefix%20%3D%20%22%22%0A%20%20location%20%3D%20%22quay.io%2Fopenshift-release-dev%2Focp-release%22%0A%20%20mirror-by-digest-only%20%3D%20true%0A%20%20%5B%5Bregistry.mirror%5D%5D%0A%20%20%20%20location%20%3D%20%22local.registry%3A5000%2Focp4%22%0A%5B%5Bregistry%5D%5D%0A%20%20prefix%20%3D%20%22%22%0A%20%20location%20%3D%20%22quay.io%2Fopenshift-release-dev%2Focp-v4.0-art-dev%22%0A%20%20mirror-by-digest-only%20%3D%20true%0A%20%20%5B%5Bregistry.mirror%5D%5D%0A%20%20%20%20location%20%3D%20%22local.registry%3A5000%2Focp4%22" }
+
+//		"contents": { "source": "data:text/plain;charset=utf-8,-----BEGIN%20CERTIFICATE-----%0AMIIFzzCCA7egAwIBAgIUQH6Eb1BL3Xi4tLKfeXvAKQrqm8QwDQYJKoZIhvcNAQEL%0ABQAwdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xpbmExEDAOBgNV%0ABAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwLRW5naW5lZXJp%0AbmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MB4XDTIwMDcwODE5MzEyMloXDTMw%0AMDcwNjE5MzEyMlowdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xp%0AbmExEDAOBgNVBAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwL%0ARW5naW5lZXJpbmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MIICIjANBgkqhkiG%0A9w0BAQEFAAOCAg8AMIICCgKCAgEAz0%2FrG%2BI4FIeGFwnoSNONyjKCF%2FSCknYlaM0C%0A8V56BlHKBRt0pp7jLPvlOOuCk0Db5cwtlYaDpWy0w0iLxWapOClLOS%2BUDRTAIMTA%0ADBsEgww38xLPGpbP4s6yw5SlEuetHPcpIrKckGTeIqapWid51yBf4oF1UsPmaXcc%0AAfKj%2B6%2Bwqwu40dER0G43WTl%2FCncjsFQJvKQAdu6m0h0Ldqy394moYIBSVsfkDSSq%0AeP%2Fz6LXGh7M7jF5s5s6BPeGPzuRrgc3IBNJWcUjKFrFXi7u5OmdfG%2Bpg2M3qYwIo%0AYHa7sAM8MkRE%2BKw6mnzfv0j9V6k2vYu2%2FZsVtSwaMklaOheGU6ERTvAZmY7BSwAW%0AWMDa9g8XbGJ8dvdoFnFFTHs2YgPG99K2ZUVmxunQaWj%2FlH3uUGS10wsSmeu5RinA%0ABXUY4I%2BmQpjUg8bqX2V2MitMxwgSYZSX2B3wqFdlTenHLoXiX9aGiSio6KFF1KVQ%0ATYJ4gn7LG%2BPmXgvhtM5%2BM%2FTPNMXuGoIiYqTyOv4hLQKRrSIl1MS%2F1rSjXkGGpYkG%0AAImwcIcG74lMtD65AgeD2o8hxMr6uDmI34P8yFuuwn1UJ0%2Bf7Y1eXc%2FJN%2Fncgagv%0A7lVOzk%2BE%2BWyZQrDzdRW201tKBEQVKm%2FVxrv4NxbM3dh1SPpRjDWXBS83PbUM86HW%0AB7LqSesCAwEAAaNTMFEwHQYDVR0OBBYEFGaknke5Vyb16D8S3b08GqsJooeUMB8G%0AA1UdIwQYMBaAFGaknke5Vyb16D8S3b08GqsJooeUMA8GA1UdEwEB%2FwQFMAMBAf8w%0ADQYJKoZIhvcNAQELBQADggIBAGMFNOkVqKMm5YzHQUCwVoByPgn5cnmBQIYe5W6k%0A6rBP9FuerBTJF1Kas98IYlH9ctVlpTDFAUuU1zUnOoBGIHbgYIs6htW56ghDTI27%0AUCDpAwhv889NvHpWK147z66JHLpTiDYb%2B34K9sGbuNQDy%2FYSWLBXIP4uYYChEnnM%0AhyjnxO84bphzDzVC57Qj0YLrQaXUX%2BP1qfNXGS7oIMZH12aAyHcCP%2FqerTbYAVPy%0AUmGziGaF4S%2FSg1c28yKL5eGE1fwHDLYqiedGKZwMRgVt4b3m7GoVjVmkhCCnKn4O%0ARuoAGETuRHpI%2F6S0e4UaUDMi8D0F%2BwNP%2FAAikTSB2339EVA57MXeuqAByKjbyiR2%0A3d8mvgiIm2CMTxomNpc0Fg%2B90tLdsQpwXhMIF7q3JVq55ri8RjhdyYYtWq03omx2%0AXNVLb8igICsHeVFgBaJ54GpAwgXsP%2BfcPCXzn2I4Gj0zmP10z942wmIWwgGbJAI%2B%0AL8kD5lyFxCOuZYUn3tZgSa4S6GR%2FMWJPMZwht2oUQyDLs0OJ7HEQKRN%2FOOkJq3An%0AANtGSADHldAqbZq5KfaPcdKXERAxrpmoKhazBV%2BjoDlF138Uke6jnUZ2ja83Zz%2F9%0AnG52KdhuWNWCZgh6kgw%2F1ULYmoog6kiBLGF5nk4GBww8GaKVw7c3mU71BHgNufWW%0AeOod%0A-----END%20CERTIFICATE-----" }
+
+//	  "contents": { "source": "data:text/plain;charset=utf-8,%5Bregistries.insecure%5D%0Aregistries%3D%5B%22local.registry%3A5001%22%5D" }
 
 var clusterFileNames = []string{
 	"kubeconfig",
@@ -182,14 +194,69 @@ func generateDummyISOImage(generator job.ISOInstallConfigGenerator, b *bareMetal
 }
 
 func (b *bareMetalInventory) formatIgnitionFile(cluster *common.Cluster, params installer.GenerateClusterISOParams) (string, error) {
+	trustca := `-----BEGIN CERTIFICATE-----
+MIIFzzCCA7egAwIBAgIUQH6Eb1BL3Xi4tLKfeXvAKQrqm8QwDQYJKoZIhvcNAQEL
+BQAwdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xpbmExEDAOBgNV
+BAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwLRW5naW5lZXJp
+bmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MB4XDTIwMDcwODE5MzEyMloXDTMw
+MDcwNjE5MzEyMlowdzELMAkGA1UEBhMCVVMxFjAUBgNVBAgMDU5vcnRoQ2Fyb2xp
+bmExEDAOBgNVBAcMB1JhbGVpZ2gxDzANBgNVBAoMBlJlZEhhdDEUMBIGA1UECwwL
+RW5naW5lZXJpbmcxFzAVBgNVBAMMDmxvY2FsLnJlZ2lzdHJ5MIICIjANBgkqhkiG
+9w0BAQEFAAOCAg8AMIICCgKCAgEAz0/rG+I4FIeGFwnoSNONyjKCF/SCknYlaM0C
+8V56BlHKBRt0pp7jLPvlOOuCk0Db5cwtlYaDpWy0w0iLxWapOClLOS+UDRTAIMTA
+DBsEgww38xLPGpbP4s6yw5SlEuetHPcpIrKckGTeIqapWid51yBf4oF1UsPmaXcc
+AfKj+6+wqwu40dER0G43WTl/CncjsFQJvKQAdu6m0h0Ldqy394moYIBSVsfkDSSq
+eP/z6LXGh7M7jF5s5s6BPeGPzuRrgc3IBNJWcUjKFrFXi7u5OmdfG+pg2M3qYwIo
+YHa7sAM8MkRE+Kw6mnzfv0j9V6k2vYu2/ZsVtSwaMklaOheGU6ERTvAZmY7BSwAW
+WMDa9g8XbGJ8dvdoFnFFTHs2YgPG99K2ZUVmxunQaWj/lH3uUGS10wsSmeu5RinA
+BXUY4I+mQpjUg8bqX2V2MitMxwgSYZSX2B3wqFdlTenHLoXiX9aGiSio6KFF1KVQ
+TYJ4gn7LG+PmXgvhtM5+M/TPNMXuGoIiYqTyOv4hLQKRrSIl1MS/1rSjXkGGpYkG
+AImwcIcG74lMtD65AgeD2o8hxMr6uDmI34P8yFuuwn1UJ0+f7Y1eXc/JN/ncgagv
+7lVOzk+E+WyZQrDzdRW201tKBEQVKm/Vxrv4NxbM3dh1SPpRjDWXBS83PbUM86HW
+B7LqSesCAwEAAaNTMFEwHQYDVR0OBBYEFGaknke5Vyb16D8S3b08GqsJooeUMB8G
+A1UdIwQYMBaAFGaknke5Vyb16D8S3b08GqsJooeUMA8GA1UdEwEB/wQFMAMBAf8w
+DQYJKoZIhvcNAQELBQADggIBAGMFNOkVqKMm5YzHQUCwVoByPgn5cnmBQIYe5W6k
+6rBP9FuerBTJF1Kas98IYlH9ctVlpTDFAUuU1zUnOoBGIHbgYIs6htW56ghDTI27
+UCDpAwhv889NvHpWK147z66JHLpTiDYb+34K9sGbuNQDy/YSWLBXIP4uYYChEnnM
+hyjnxO84bphzDzVC57Qj0YLrQaXUX+P1qfNXGS7oIMZH12aAyHcCP/qerTbYAVPy
+UmGziGaF4S/Sg1c28yKL5eGE1fwHDLYqiedGKZwMRgVt4b3m7GoVjVmkhCCnKn4O
+RuoAGETuRHpI/6S0e4UaUDMi8D0F+wNP/AAikTSB2339EVA57MXeuqAByKjbyiR2
+3d8mvgiIm2CMTxomNpc0Fg+90tLdsQpwXhMIF7q3JVq55ri8RjhdyYYtWq03omx2
+XNVLb8igICsHeVFgBaJ54GpAwgXsP+fcPCXzn2I4Gj0zmP10z942wmIWwgGbJAI+
+L8kD5lyFxCOuZYUn3tZgSa4S6GR/MWJPMZwht2oUQyDLs0OJ7HEQKRN/OOkJq3An
+ANtGSADHldAqbZq5KfaPcdKXERAxrpmoKhazBV+joDlF138Uke6jnUZ2ja83Zz/9
+nG52KdhuWNWCZgh6kgw/1ULYmoog6kiBLGF5nk4GBww8GaKVw7c3mU71BHgNufWW
+eOod
+-----END CERTIFICATE-----
+	`
+	registriesMapping := `
+unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
+[[registry]]
+	location="local.registry:5001"
+	insecure=true
+[[registry]]
+	prefix = ""
+	location = "quay.io/openshift-release-dev/ocp-release"
+	mirror-by-digest-only = true
+	[[registry.mirror]]
+	location = "local.registry:5000/ocp4"
+[[registry]]
+	prefix = ""
+	location = "quay.io/openshift-release-dev/ocp-v4.0-art-dev"
+	mirror-by-digest-only = true
+	[[registry.mirror]]
+	location = "local.registry:5000/ocp4"`
+
 	var ignitionParams = map[string]string{
-		"userSshKey":     b.getUserSshKey(params),
-		"AgentDockerImg": b.AgentDockerImg,
-		"InventoryURL":   b.InventoryURL,
-		"InventoryPort":  b.InventoryPort,
-		"clusterId":      cluster.ID.String(),
-		"ProxyURL":       params.ImageCreateParams.ProxyURL,
-		"PULL_SECRET":    dataurl.EncodeBytes([]byte(cluster.PullSecret)),
+		"userSshKey":            b.getUserSshKey(params),
+		"AgentDockerImg":        b.AgentDockerImg,
+		"InventoryURL":          b.InventoryURL,
+		"InventoryPort":         b.InventoryPort,
+		"clusterId":             cluster.ID.String(),
+		"ProxyURL":              params.ImageCreateParams.ProxyURL,
+		"PULL_SECRET":           dataurl.EncodeBytes([]byte(cluster.PullSecret)),
+		"RegistriesMapping":     dataurl.EncodeBytes([]byte(registriesMapping)),
+		"AdditionalTrustBundle": dataurl.EncodeBytes([]byte(trustca)),
 	}
 	tmpl, err := template.New("ignitionConfig").Parse(ignitionConfigFormat)
 	if err != nil {

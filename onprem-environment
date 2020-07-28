@@ -17,6 +17,5 @@ INVENTORY_IMAGE=local.registry:5001/ocpmetal/inventory:latest
 HARDWARE_INFO_IMAGE=local.registry:5001/ocpmetal/hardware_info:latest
 FREE_ADDRESSES_IMAGE=local.registry:5001/ocpmetal/free_addresses:latest
 IMAGE_CONTENT_MIRROR=local.registry:5000/ocp4
-IMAGE_CONTENT_SOURCE_1=quay.io/openshift-release-dev/ocp-release
-MIRROR_SOURCE_IMAGE_2=quay.io/openshift-release-dev/ocp-v4.0-art-dev
+IMAGE_CONTENT_SOURCES=quay.io/openshift-release-dev/ocp-release;quay.io/openshift-release-dev/ocp-v4.0-art-dev
 ADDITIONAL_TRUST_BUNDLE=<YOUR_REGISTRY_CA_CERT_MINIFIED_STRING_HERE>

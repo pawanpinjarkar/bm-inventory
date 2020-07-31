@@ -223,23 +223,24 @@ func (b *bareMetalInventory) formatIgnitionFile(cluster *common.Cluster, params 
 		log.Error("decode error:", err)
 		return "", err
 	}
+	imageContenSources := strings.Split(os.Getenv("IMAGE_CONTENT_SOURCES"), ";")
 	registriesMapping := `
-unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
-[[registry]]
-	location="local.registry:5001"
-	insecure=true
-[[registry]]
-	prefix = ""
-	location = "quay.io/openshift-release-dev/ocp-release"
-	mirror-by-digest-only = true
-	[[registry.mirror]]
-	location = "local.registry:5000/ocp4"
-[[registry]]
-	prefix = ""
-	location = "quay.io/openshift-release-dev/ocp-v4.0-art-dev"
-	mirror-by-digest-only = true
-	[[registry.mirror]]
-	location = "local.registry:5000/ocp4"`
+	unqualified-search-registries = ["registry.access.redhat.com", "docker.io"]
+	[[registry]]
+		location="local.registry:5001"
+		insecure=true
+	[[registry]]
+		prefix = ""
+		location = "` + imageContenSources[0] + `"
+		mirror-by-digest-only = true
+		[[registry.mirror]]
+		location = "` + os.Getenv("IMAGE_CONTENT_MIRROR") + `"
+	[[registry]]
+		prefix = ""
+		location = "` + imageContenSources[1] + `"
+		mirror-by-digest-only = true
+		[[registry.mirror]]
+		location = "` + os.Getenv("IMAGE_CONTENT_MIRROR") + `"`
 
 	var ignitionParams = map[string]string{
 		"userSshKey":            b.getUserSshKey(params),
